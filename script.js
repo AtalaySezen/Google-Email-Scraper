@@ -9,7 +9,7 @@ async function scrapeAllPages(url) {
   try {
     await scrapePage(page, url);
   } catch (error) {
-    console.error("Hata oluştu:", error);
+    return false;
   } finally {
     await browser.close();
   }
@@ -17,7 +17,6 @@ async function scrapeAllPages(url) {
 
 async function scrapePage(page, url) {
   if (visitedPages.has(url)) {
-    console.log(`Sayfa zaten ziyaret edildi - ${url}`);
     return;
   }
 
@@ -28,7 +27,6 @@ async function scrapePage(page, url) {
   const searchText = "e-posta";
 
   if (entirePageContent.includes(searchText)) {
-    console.log(`Aranan metin bulundu - Sayfa: ${url}`);
     const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/;
     const foundEmails = entirePageContent.match(emailRegex);
 
@@ -38,7 +36,6 @@ async function scrapePage(page, url) {
       console.log("E-posta adresi bulunamadı.");
     }
   } else {
-    console.log(`Aranan metin bulunamadı - Sayfa: ${url}`);
   }
 
   const links = await page.$$eval("a", (anchors) =>
