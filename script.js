@@ -1,5 +1,5 @@
 const puppeteer = require("puppeteer");
-const siteUrl = "https://www.aigtur.com.tr/";
+const siteUrl = "https://motosikletgezirotalari.net/";
 const visitedPages = new Set();
 const foundEmailsSet = new Set();
 
