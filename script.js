@@ -1,8 +1,8 @@
 const puppeteer = require("puppeteer");
-const siteUrl = "https://www.aigtur.com.tr/";
+const siteUrl = "https://motosikletgezirotalari.net/";
 const visitedPages = new Set();
 
-let lastFoundEmail = null;
+let foundEmails = []; // Birden fazla e-postayı tutacak dizi
 
 async function scrapeAllPages(url) {
   const browser = await puppeteer.launch();
@@ -16,8 +16,8 @@ async function scrapeAllPages(url) {
     await browser.close();
   }
 
-  if (lastFoundEmail !== null) {
-    console.log(lastFoundEmail);
+  if (foundEmails.length > 0) {
+    console.log("Bulunan E-posta Adresleri:", foundEmails);
   } else {
     console.log("E-posta adresi bulunamadı.");
   }
@@ -34,14 +34,12 @@ async function scrapePage(page, url) {
     console.log(`Sayfa ziyaret edildi - ${url}`);
     const entirePageContent = await page.content();
     const searchText = "e-posta";
-
     if (entirePageContent.includes(searchText)) {
-      const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/;
-      const foundEmails = entirePageContent.match(emailRegex);
-
-      if (foundEmails) {
-        lastFoundEmail = foundEmails[0];
-        console.log("Bulunan E-posta Adresi:", foundEmails[0]);
+      const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
+      const foundEmailsOnPage = entirePageContent.match(emailRegex);
+      if (foundEmailsOnPage) {
+        foundEmails = [...foundEmails, ...foundEmailsOnPage];
+        console.log("Bulunan E-posta Adresleri:", foundEmailsOnPage);
       }
     }
 
@@ -51,14 +49,14 @@ async function scrapePage(page, url) {
 
     for (const link of links) {
       if (link.startsWith("mailto:")) {
-        lastFoundEmail = link;
+        foundEmails.push(link);
         console.log(`E-posta bağlantısı bulundu: ${link}`);
       } else {
         await scrapePage(page, link);
       }
     }
   } catch (error) {
-    // console.error("Hata oluştu:", error);
+    // console.error(`Hata oluştu - ${url}:`, error);
   }
 }
 
