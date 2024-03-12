@@ -2,8 +2,7 @@ const puppeteer = require("puppeteer");
 const siteUrl = "https://motosikletgezirotalari.net/";
 const targetDomain = "motosikletgezirotalari.net";
 const visitedPages = new Set();
-
-let foundEmails = [];
+const foundEmailsSet = new Set();
 
 async function scrapeAllPages(url) {
   const browser = await puppeteer.launch();
@@ -17,6 +16,8 @@ async function scrapeAllPages(url) {
     await browser.close();
   }
 
+  const foundEmails = Array.from(foundEmailsSet);
+
   if (foundEmails.length > 0) {
     console.log("Bulunan E-posta Adresleri:", foundEmails);
   } else {
@@ -29,7 +30,6 @@ async function scrapePage(page, url) {
     return;
   }
 
-  // Sadece belirli bir domain altındaki linkleri kontrol et
   if (!url.includes(targetDomain)) {
     return;
   }
@@ -40,16 +40,13 @@ async function scrapePage(page, url) {
     await page.goto(url, { waitUntil: "domcontentloaded" });
     console.log(`Sayfa ziyaret edildi - ${url}`);
     const entirePageContent = await page.content();
-    const searchText = "e-posta";
+    const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
+    const foundEmailsOnPage = entirePageContent.match(emailRegex);
 
-      console.log("girdim");
-      const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
-      const foundEmailsOnPage = entirePageContent.match(emailRegex);
-      
-      if (foundEmailsOnPage) {
-        foundEmails = [...foundEmails, ...foundEmailsOnPage];
-        console.log("Bulunan E-posta Adresleri:", foundEmailsOnPage);
-      }
+    if (foundEmailsOnPage) {
+      foundEmailsOnPage.forEach((email) => foundEmailsSet.add(email));
+      console.log("Bulunan E-posta Adresleri:", foundEmailsOnPage);
+    }
 
     const links = await page.$$eval("a", (anchors) =>
       anchors.map((anchor) => anchor.href)
