@@ -1,6 +1,5 @@
 const puppeteer = require("puppeteer");
-const siteUrl = "https://motosikletgezirotalari.net/";
-const targetDomain = "motosikletgezirotalari.net";
+const siteUrl = "https://www.aigtur.com.tr/";
 const visitedPages = new Set();
 const foundEmailsSet = new Set();
 
@@ -30,7 +29,7 @@ async function scrapePage(page, url) {
     return;
   }
 
-  if (!url.includes(targetDomain)) {
+  if (!url.includes(siteUrl)) {
     return;
   }
 
