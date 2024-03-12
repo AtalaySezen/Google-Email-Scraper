@@ -1,8 +1,9 @@
 const puppeteer = require("puppeteer");
 const siteUrl = "https://motosikletgezirotalari.net/";
+const targetDomain = "motosikletgezirotalari.net";
 const visitedPages = new Set();
 
-let foundEmails = []; // Birden fazla e-postayı tutacak dizi
+let foundEmails = [];
 
 async function scrapeAllPages(url) {
   const browser = await puppeteer.launch();
@@ -27,6 +28,12 @@ async function scrapePage(page, url) {
   if (visitedPages.has(url)) {
     return;
   }
+
+  // Sadece belirli bir domain altındaki linkleri kontrol et
+  if (!url.includes(targetDomain)) {
+    return;
+  }
+
   visitedPages.add(url);
 
   try {
@@ -34,26 +41,22 @@ async function scrapePage(page, url) {
     console.log(`Sayfa ziyaret edildi - ${url}`);
     const entirePageContent = await page.content();
     const searchText = "e-posta";
-    if (entirePageContent.includes(searchText)) {
+
+      console.log("girdim");
       const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
       const foundEmailsOnPage = entirePageContent.match(emailRegex);
+      
       if (foundEmailsOnPage) {
         foundEmails = [...foundEmails, ...foundEmailsOnPage];
         console.log("Bulunan E-posta Adresleri:", foundEmailsOnPage);
       }
-    }
 
     const links = await page.$$eval("a", (anchors) =>
       anchors.map((anchor) => anchor.href)
     );
 
     for (const link of links) {
-      if (link.startsWith("mailto:")) {
-        foundEmails.push(link);
-        console.log(`E-posta bağlantısı bulundu: ${link}`);
-      } else {
-        await scrapePage(page, link);
-      }
+      await scrapePage(page, link);
     }
   } catch (error) {
     // console.error(`Hata oluştu - ${url}:`, error);
