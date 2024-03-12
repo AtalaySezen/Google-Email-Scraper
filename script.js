@@ -1,6 +1,8 @@
 const puppeteer = require("puppeteer");
-const siteUrl = "https://motosikletgezirotalari.net";
+const siteUrl = "https://www.aigtur.com.tr/";
 const visitedPages = new Set();
+
+let lastFoundEmail = null;
 
 async function scrapeAllPages(url) {
   const browser = await puppeteer.launch();
@@ -9,9 +11,15 @@ async function scrapeAllPages(url) {
   try {
     await scrapePage(page, url);
   } catch (error) {
-    return false;
+    // console.error("Hata oluştu:", error);
   } finally {
     await browser.close();
+  }
+
+  if (lastFoundEmail !== null) {
+    console.log(lastFoundEmail);
+  } else {
+    console.log("E-posta adresi bulunamadı.");
   }
 }
 
@@ -19,35 +27,38 @@ async function scrapePage(page, url) {
   if (visitedPages.has(url)) {
     return;
   }
-
   visitedPages.add(url);
-  await page.goto(url, { waitUntil: "domcontentloaded" });
 
-  const entirePageContent = await page.content();
-  const searchText = "e-posta";
+  try {
+    await page.goto(url, { waitUntil: "domcontentloaded" });
+    console.log(`Sayfa ziyaret edildi - ${url}`);
+    const entirePageContent = await page.content();
+    const searchText = "e-posta";
 
-  if (entirePageContent.includes(searchText)) {
-    const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/;
-    const foundEmails = entirePageContent.match(emailRegex);
+    if (entirePageContent.includes(searchText)) {
+      const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/;
+      const foundEmails = entirePageContent.match(emailRegex);
 
-    if (foundEmails) {
-      console.log("Bulunan E-posta Adresi:", foundEmails[0]);
-    } else {
-      console.log("E-posta adresi bulunamadı.");
+      if (foundEmails) {
+        lastFoundEmail = foundEmails[0];
+        console.log("Bulunan E-posta Adresi:", foundEmails[0]);
+      }
     }
-  } else {
-  }
 
-  const links = await page.$$eval("a", (anchors) =>
-    anchors.map((anchor) => anchor.href)
-  );
+    const links = await page.$$eval("a", (anchors) =>
+      anchors.map((anchor) => anchor.href)
+    );
 
-  for (const link of links) {
-    if (link.startsWith("mailto:")) {
-      console.log(`E-posta bağlantısı bulundu: ${link}`);
-    } else {
-      await scrapePage(page, link);
+    for (const link of links) {
+      if (link.startsWith("mailto:")) {
+        lastFoundEmail = link;
+        console.log(`E-posta bağlantısı bulundu: ${link}`);
+      } else {
+        await scrapePage(page, link);
+      }
     }
+  } catch (error) {
+    // console.error("Hata oluştu:", error);
   }
 }
 
