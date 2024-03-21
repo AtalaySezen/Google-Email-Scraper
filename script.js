@@ -57,8 +57,12 @@ async function scrapeEmailsFromGoogle(keyword, maxResults) {
             /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
           const pageEmails = content.match(emailRegex) || [];
           pageEmails.forEach((email) => {
-            emailsSet.add(email);
-            fs.appendFileSync(`${keyword}.txt`, email + "\n");
+            const strongEmailRegex =
+              /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?![\w\W]*\.png$))/g;
+            if (strongEmailRegex.test(email)) {
+              emailsSet.add(email);
+              fs.appendFileSync(`${keyword}.txt`, email + "\n");
+            }
           });
         } catch (error) {
           console.error(`Siteye gitme hatası: ${siteURL}`, error);
