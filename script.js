@@ -1,64 +1,95 @@
 const puppeteer = require("puppeteer");
-const siteUrl = "https://motosikletgezirotalari.net/";
-const visitedPages = new Set();
-const foundEmailsSet = new Set();
+const fs = require("fs");
 
-async function scrapeAllPages(url) {
-  const browser = await puppeteer.launch();
+async function isBlocked(page) {
+  const url = page.url();
+  return url.toLowerCase().includes("sorry");
+}
+
+async function blockWait(page, milliseconds) {
+  await page.evaluate((ms) => {
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
+  }, milliseconds);
+}
+
+async function scrapeEmailsFromGoogle(keyword, maxResults) {
+  const browser = await puppeteer.launch({
+    headless: false,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    defaultViewport: null,
+    ignoreHTTPSErrors: true,
+    userAgent:
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+  });
   const page = await browser.newPage();
 
   try {
-    await scrapePage(page, url);
+    let emailsSet = new Set();
+    let visitedSites = [];
+    let totalResults = 0;
+    let currentPage = 1;
+    while (totalResults < maxResults) {
+      await page.goto(
+        `https://www.google.com/search?q=${keyword}&start=${
+          (currentPage - 1) * 10
+        }`
+      );
+
+      if (await isBlocked(page)) {
+        console.log("Engelleme algılandı. Bekleniyor...");
+        await blockWait(page, 10000);
+        continue;
+      }
+
+      const siteURLs = await page.$$eval("div.yuRUbf a", (elements) =>
+        elements.map((element) => element.href)
+      );
+      console.log(siteURLs, "siteurl");
+      visitedSites.push(...siteURLs);
+
+      for (const siteURL of siteURLs) {
+        try {
+          await page.goto(siteURL);
+          const content = await page.content();
+          const emailRegex =
+            /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+          const pageEmails = content.match(emailRegex) || [];
+          pageEmails.forEach((email) => {
+            emailsSet.add(email);
+            fs.appendFileSync(`${keyword}.txt`, email + "\n");
+          });
+        } catch (error) {
+          console.error(`Siteye gitme hatası: ${siteURL}`, error);
+          continue;
+        }
+      }
+
+      totalResults += siteURLs.length;
+      currentPage++;
+    }
+
+    const emails = [...emailsSet];
+    return { emails, visitedSites };
   } catch (error) {
-    // console.error("Hata oluştu:", error);
+    throw error;
   } finally {
     await browser.close();
   }
-
-  const foundEmails = Array.from(foundEmailsSet);
-
-  if (foundEmails.length > 0) {
-    console.log("Bulunan E-posta Adresleri:", foundEmails);
-  } else {
-    console.log("E-posta adresi bulunamadı.");
-  }
 }
 
-async function scrapePage(page, url) {
-  if (visitedPages.has(url)) {
-    return;
-  }
+const keyword = "write your keyword here";
+const maxResults = 200;
 
-  if (!url.includes(siteUrl)) {
-    return;
-  }
-
-  visitedPages.add(url);
-
-  try {
-    await page.goto(url, { waitUntil: "domcontentloaded" });
-    console.log(`Sayfa ziyaret edildi - ${url}`);
-    const entirePageContent = await page.content();
-    const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
-    const foundEmailsOnPage = entirePageContent.match(emailRegex);
-
-    if (foundEmailsOnPage) {
-      foundEmailsOnPage.forEach((email) => foundEmailsSet.add(email));
-      console.log("Bulunan E-posta Adresleri:", foundEmailsOnPage);
-    }
-
-    const links = await page.$$eval("a", (anchors) =>
-      anchors.map((anchor) => anchor.href)
-    );
-
-    for (const link of links) {
-      await scrapePage(page, link);
-    }
-  } catch (error) {
-    // console.error(`Hata oluştu - ${url}:`, error);
-  }
-}
-
-(async () => {
-  await scrapeAllPages(siteUrl);
-})();
+scrapeEmailsFromGoogle(keyword, maxResults)
+  .then(({ emails, visitedSites }) => {
+    console.log("Bulunan E-posta Adresleri:");
+    console.log(emails);
+    console.log("Ziyaret Edilen Siteler:");
+    console.log(visitedSites);
+    console.log("E-posta adresleri emails.txt dosyasına yazıldı.");
+  })
+  .catch((error) => {
+    console.error("Hata oluştu:", error);
+  });
