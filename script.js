@@ -14,6 +14,10 @@ async function blockWait(page, milliseconds) {
   }, milliseconds);
 }
 
+function findDuplicatedEmails(emailSet, email) {
+  return emailSet.has(email);
+}
+
 async function scrapeEmailsFromGoogle(keyword, maxResults) {
   const browser = await puppeteer.launch({
     headless: false,
@@ -60,8 +64,10 @@ async function scrapeEmailsFromGoogle(keyword, maxResults) {
             const strongEmailRegex =
               /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?![\w\W]*\.png$))/g;
             if (strongEmailRegex.test(email)) {
-              emailsSet.add(email);
-              fs.appendFileSync(`${keyword}.txt`, email + "\n");
+              if (!findDuplicatedEmails(emailsSet, email)) {
+                emailsSet.add(email);
+                fs.appendFileSync(`${keyword}.txt`, email + "\n");
+              }
             }
           });
         } catch (error) {
