@@ -24,10 +24,10 @@ Previously searched keywords are stored in a file named searched_keywords.txt, s
 
 Usage
 <br />
-
-Enter the keywords you want to search into the keywords.txt file and run the Node.js application.
-EmailFinder will crawl web pages.
-It will provide the found email addresses in a txt file.
+1. Enter the keywords you want to search in the keywords.txt file and run the Node.js application.
+2. EmailFinder will crawl web pages.
+3. It will provide you with a .txt file containing the found email addresses.
+   
 
 
 
