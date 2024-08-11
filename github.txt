@@ -1,0 +1,2 @@
+eventsponsorship@github.com
+events@github.com
