@@ -13,7 +13,8 @@ Ve daha önce aramış olduğunuz anahtar kelimeleri searched_keywords.txt isiml
 1. Keywords.txt dosyasına aramak istediğiniz anahtar kelimeleri girin ve node.js uygulamasını çalıştırın.
 2. EmailFinder web sayfalarını tarayacaktır.
 3. Bulunan e-posta adreslerini size txt dosyası halinde verecektir.
-
+   
+--------------------------
 
 This project is an application that searches for email addresses by crawling Google search results based on the keywords provided in a keywords.txt file. 
 <br/>
