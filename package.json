@@ -1,6 +1,6 @@
 {
   "name": "email-finder-javascript",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "",
   "main": "script.js",
   "scripts": {
@@ -10,7 +10,9 @@
   "license": "ISC",
   "dependencies": {
     "exceljs": "^4.4.0",
-    "fs": "^0.0.1-security"
+    "fs": "^0.0.1-security",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
   },
   "devDependencies": {
     "puppeteer": "^23.0.2"

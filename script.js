@@ -1,22 +1,26 @@
-const puppeteer = require("puppeteer");
+const puppeteer = require("puppeteer-extra");
+const StealthPlugin = require("puppeteer-extra-plugin-stealth");
+puppeteer.use(StealthPlugin());
 const fs = require("fs");
 const path = require("path");
 const ExcelJS = require("exceljs");
-
 const keywordsFilePath = "keywords.txt";
 const searchedKeywordsFilePath = "searched_keywords.txt";
 
+const randomDelay = (min, max) =>
+  new Promise((resolve) =>
+    setTimeout(resolve, Math.floor(Math.random() * (max - min + 1) + min)),
+  );
+
 async function isBlocked(page) {
   const url = page.url();
-  return url.toLowerCase().includes("sorry");
-}
-
-async function blockWait(page, milliseconds) {
-  await page.evaluate((ms) => {
-    return new Promise((resolve) => {
-      setTimeout(resolve, ms);
-    });
-  }, milliseconds);
+  if (
+    url.toLowerCase().includes("sorry") ||
+    (await page.$('iframe[src*="recaptcha"]'))
+  ) {
+    return true;
+  }
+  return false;
 }
 
 function findDuplicatedEmails(emailSet, email) {
@@ -32,29 +36,213 @@ function readKeywords(filePath) {
 }
 
 function saveKeyword(keyword, filePath) {
-  fs.appendFileSync(filePath, keyword + "\n");
+  fs.appendFileSync(filePath, keyword.trim() + "\n");
 }
 
 function sanitizeFilename(name) {
-  return name.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+  let cleanName = name
+    .replace(/ğ/g, "g")
+    .replace(/Ğ/g, "g")
+    .replace(/ü/g, "u")
+    .replace(/Ü/g, "u")
+    .replace(/ş/g, "s")
+    .replace(/Ş/g, "s")
+    .replace(/ı/g, "i")
+    .replace(/İ/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/Ö/g, "o")
+    .replace(/ç/g, "c")
+    .replace(/Ç/g, "c");
+  cleanName = cleanName.replace(/\s+/g, "_");
+  cleanName = cleanName.replace(/[^a-zA-Z0-9_]/g, "");
+  return cleanName.toLowerCase();
+}
+
+async function extractAndAddEmails(page, emailsSet, worksheet) {
+  const content = await page.content();
+  const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+  const pageEmails = content.match(emailRegex) || [];
+  let foundCount = 0;
+
+  for (const email of pageEmails) {
+    const strongEmailRegex =
+      /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?![\w\W]*\.png$))/g;
+
+    if (strongEmailRegex.test(email)) {
+      const invalidExtensions = [
+        ".png",
+        ".webp",
+        ".gif",
+        ".jpg",
+        "donanimhaber.com",
+        ".svg",
+        "etkialani.com",
+        ".webp",
+        ".gov.tr",
+        "@example.com",
+        "yandex-team.ru",
+        "harita@destek.yandex.com.tr",
+        "firmakuruyorum.com",
+        "ikas.com",
+        "email.com",
+        "kuveytturk.com.tr",
+        "memurlar.net",
+        "sit.amet",
+        "indeed.com",
+        "schafer.com.tr",
+        "domain...vb",
+        "teknosa.com",
+        "evkur.com.tr",
+        "vestel.com.tr",
+        "adres.net",
+        "sabah.com.tr",
+        "adres.com",
+        "dha.com.tr",
+        "deneme.com",
+        "dha.com",
+        "jpg.jpeg",
+        "hurriyet.com.tr",
+        "hurriyet.com",
+        "ornek.com",
+        "tatil.com",
+        "evidea.com",
+        "@getir.com",
+        "domain.com",
+        "eczacibasi.com.tr",
+        "@hotmail.com",
+        "ntv.com.tr",
+        "jollytur.com",
+        "info@iyilikkazansin.com",
+        "test@web.com",
+        "srvpanel.com",
+        "wixpress.com",
+        "getsentry.com",
+        "test.com",
+        "website.com",
+        "kelebek.com",
+        "site.com",
+        "info@trendyol.com",
+        "trendyol",
+        "sentry.io",
+        "musiad.org.tr",
+        "musiad.at",
+        "muesiad.dk",
+        "visable.com",
+        "roztocil.name",
+        "bel.tr",
+        ".kep.tr",
+        "vip.163.com",
+        "@donanimhaber.com",
+        "mudo.com.tr",
+        "otelfiyat.com",
+        "dsdamat.com.tr",
+        "armut.com",
+        "homify.com",
+        "yemeksepeti.com",
+        "11.js",
+        "flo.com.tr",
+        "littlejoyturizm.com",
+        "tatildenince.com",
+        "tatilmaximum.com.tr",
+        "tatilzon.com",
+        "myratur.com",
+        "amazon.com",
+        "coex.cz",
+        "nbxfx.com",
+        ".edu.tr",
+        "tse.org.tr",
+        "eposta.com",
+        "kiptas.com.tr",
+        "verizon.net",
+        ".yandex.ru",
+        "addresshere.com",
+        "siteadresi.com",
+        "eleman.net",
+        "emlakjet.com",
+        "igairport.aero",
+        "biletdukkani.com",
+        "sochic.com",
+        "atasay.com",
+        "onedio.com",
+        "altinbas.com",
+        "steinfels-kg.de",
+        "oggusto.com",
+        "youremail.com",
+        "boschelektriklielaletleri.com",
+        "tatildukkani.com",
+        "trthaber.com",
+        "sokmarket.com.tr",
+        "broofa.com",
+        "opencart.com",
+        "turhost.com",
+        "wings.com.tr",
+        "vanleeuwen.nl",
+        "otelpuan.com",
+        "email.here",
+        "chp.org.tr",
+        "eve.com.tr",
+        "yenisafak.com",
+        "iletisim@yenisafak.com.tr",
+        "odtuteknokent.com.tr",
+        "trabzonteknokent.com.tr",
+        "milliyet.com.tr",
+        "adresin.com",
+        "otelpuan.com.tr",
+        "siteniz.com",
+        "joomla51.com",
+        "odamax.com",
+        "osb.org.tr",
+        "adresiniz.com",
+        "osb.com",
+        "wix.com",
+        "wordpress.com",
+        "bootstrap",
+        "react",
+        "jquery",
+        "google.com",
+      ];
+
+      const emailEndsWithInvalidExtension = invalidExtensions.some(
+        (ext) => email.endsWith(ext) || email.includes(ext),
+      );
+
+      if (!emailEndsWithInvalidExtension) {
+        if (!findDuplicatedEmails(emailsSet, email)) {
+          emailsSet.add(email);
+          console.log(`[EKLENDİ] ${email}`);
+          worksheet.addRow({ email: email });
+          foundCount++;
+        }
+      }
+    }
+  }
+  return foundCount;
 }
 
 async function scrapeEmailsFromGoogle(keyword) {
   const browser = await puppeteer.launch({
     headless: false,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    userDataDir: "./chrome_profile",
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-blink-features=AutomationControlled",
+      "--window-size=1920,1080",
+    ],
     defaultViewport: null,
     ignoreHTTPSErrors: true,
-    userAgent:
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
   });
-  const page = await browser.newPage();
 
+  const page = await browser.newPage();
+  await page.setUserAgent(
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+  );
   let workbook = new ExcelJS.Workbook();
   let worksheet = workbook.addWorksheet("Emails");
   worksheet.columns = [{ header: "Email", key: "email", width: 50 }];
-  let excelFileCount = 1;
-  let rowCount = 0;
+  const sanitizedKeyword = sanitizeFilename(keyword);
+  const excelFileName = `${sanitizedKeyword}.xlsx`;
+  const excelFilePath = path.join(__dirname, excelFileName);
 
   try {
     let emailsSet = new Set();
@@ -62,251 +250,110 @@ async function scrapeEmailsFromGoogle(keyword) {
     let currentPage = 1;
     let noMoreResults = false;
 
-    const sanitizedKeyword = sanitizeFilename(keyword);
-
     while (!noMoreResults) {
+      console.log(`--- Sayfa ${currentPage} Taranıyor ---`);
+
       await page.goto(
-        `https://www.google.com/search?q=${keyword}&start=${
-          (currentPage - 1) * 10
-        }`
+        `https://www.google.com/search?q=${keyword}&start=${(currentPage - 1) * 10}`,
+        { waitUntil: "domcontentloaded" },
       );
 
       if (await isBlocked(page)) {
-        console.log("Blocking detected. Waiting....");
-        await blockWait(page, 10000);
-        continue;
-      }
-
-      const siteURLs = await page.$$eval("div.yuRUbf a", (elements) =>
-        elements.map((element) => element.href)
-      );
-
-      if (siteURLs.length === 0) {
-        console.log(`No more results found for "${keyword}".`);
-        noMoreResults = true;
-        continue;
-      }
-
-      visitedSites.push(...siteURLs);
-
-      for (const siteURL of siteURLs) {
-        const restrictedSites = [
-          "coraltatil.com",
-          "jollytur.com",
-          ".tripadvisor.com",
-          "https://www.trendyol.com/",
-          "https://otelz.com/",
-          "https://www.hepsiburada.com/",
-          "https://www.n11.com/",
-          "https://amazon.com.tr/",
-          "https://www.isbank.com.tr/",
-          "https://www.garantibbva.com.tr/",
-          "https://www.teb.com.tr/",
-          "https://www.akbank.com/tr-tr",
-          "https://www.ciceksepeti.com/",
-          "https://www.sahibinden.com/",
-          "https://www.pttavm.com/",
-          "https://www.odamax.com/",
-        ];
-
-        const isRestricted = restrictedSites.some((site) =>
-          siteURL.includes(site)
-        );
-
-        if (isRestricted) {
-          console.log(`Access to the URL "${siteURL}" has been blocked.`);
-          continue;
+        console.log("!!! CAPTCHA BEKLENİYOR (60sn) !!!");
+        await randomDelay(60000, 60000);
+        if (await isBlocked(page)) {
+          console.log("Blok devam ediyor, çıkılıyor.");
+          break;
         }
+      }
 
+      await randomDelay(2000, 3000);
+
+      const siteURLs = await page.evaluate(() => {
+        const anchors = Array.from(document.querySelectorAll("div#search a"));
+        return anchors
+          .map((a) => a.href)
+          .filter(
+            (href) =>
+              href &&
+              href.startsWith("http") &&
+              !href.includes("google.com") &&
+              !href.includes("googleusercontent"),
+          );
+      });
+
+      const uniqueURLs = [...new Set(siteURLs)];
+      console.log(`Link Count: ${uniqueURLs.length}`);
+      if (uniqueURLs.length === 0) {
+        const nextButton = await page.$("#pnnext");
+        if (!nextButton) {
+          console.log("Done");
+          noMoreResults = true;
+        }
+      }
+      visitedSites.push(...uniqueURLs);
+      for (const siteURL of uniqueURLs) {
+        const restrictedSites = [
+          "trendyol.com",
+          "hepsiburada.com",
+          "n11.com",
+          "amazon.com",
+          "sahibinden.com",
+          "facebook.com",
+          "twitter.com",
+          "instagram.com",
+          "linkedin.com",
+          "youtube.com",
+          "pinterest.com",
+          "wikipedia.org",
+          "tripadvisor.com",
+          "sikayetvar.com",
+        ];
+        if (restrictedSites.some((site) => siteURL.includes(site))) continue;
         try {
-          await page.goto(siteURL);
-          const content = await page.content();
-          const emailRegex =
-            /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
-          const pageEmails = content.match(emailRegex) || [];
-          pageEmails.forEach(async (email) => {
-            const strongEmailRegex =
-              /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?![\w\W]*\.png$))/g;
-            if (strongEmailRegex.test(email)) {
-              const invalidExtensions = [
-                ".png",
-                ".webp",
-                ".gif",
-                ".jpg",
-                "donanimhaber.com",
-                ".svg",
-                "etkialani.com",
-                ".webp",
-                ".gov.tr",
-                "@example.com",
-                "yandex-team.ru",
-                "harita@destek.yandex.com.tr",
-                "firmakuruyorum.com",
-                "ikas.com",
-                "email.com",
-                "kuveytturk.com.tr",
-                "memurlar.net",
-                "sit.amet",
-                "indeed.com",
-                "schafer.com.tr",
-                "domain...vb",
-                "teknosa.com",
-                "evkur.com.tr",
-                "vestel.com.tr",
-                "adres.net",
-                "sabah.com.tr",
-                "adres.com",
-                "dha.com.tr",
-                "deneme.com",
-                "dha.com",
-                "jpg.jpeg",
-                "hurriyet.com.tr",
-                "hurriyet.com",
-                "ornek.com",
-                "tatil.com",
-                "evidea.com",
-                "@getir.com",
-                "domain.com",
-                "eczacibasi.com.tr",
-                "@hotmail.com",
-                "ntv.com.tr",
-                "jollytur.com",
-                "info@iyilikkazansin.com",
-                "test@web.com",
-                "srvpanel.com",
-                "wixpress.com",
-                "getsentry.com",
-                "test.com",
-                "website.com",
-                "kelebek.com",
-                "site.com",
-                "info@trendyol.com",
-                "trendyol",
-                "sentry.io",
-                "musiad.org.tr",
-                "musiad.at",
-                "muesiad.dk",
-                "visable.com",
-                "roztocil.name",
-                "bel.tr",
-                ".kep.tr",
-                "vip.163.com",
-                "@donanimhaber.com",
-                "mudo.com.tr",
-                "otelfiyat.com",
-                "dsdamat.com.tr",
-                "armut.com",
-                "homify.com",
-                "yemeksepeti.com",
-                "11.js",
-                "flo.com.tr",
-                "littlejoyturizm.com",
-                "tatildenince.com",
-                "tatilmaximum.com.tr",
-                "tatilzon.com",
-                "myratur.com",
-                "amazon.com",
-                "coex.cz",
-                "nbxfx.com",
-                ".edu.tr",
-                "tse.org.tr",
-                "eposta.com",
-                "kiptas.com.tr",
-                "verizon.net",
-                ".yandex.ru",
-                "addresshere.com",
-                "siteadresi.com",
-                "eleman.net",
-                "emlakjet.com",
-                "igairport.aero",
-                "biletdukkani.com",
-                "sochic.com",
-                "atasay.com",
-                "onedio.com",
-                "altinbas.com",
-                "steinfels-kg.de",
-                "oggusto.com",
-                "youremail.com",
-                "boschelektriklielaletleri.com",
-                "tatildukkani.com",
-                "trthaber.com",
-                "sokmarket.com.tr",
-                "broofa.com",
-                "opencart.com",
-                "turhost.com",
-                "wings.com.tr",
-                "vanleeuwen.nl",
-                "otelpuan.com",
-                "email.here",
-                "chp.org.tr",
-                "eve.com.tr",
-                "yenisafak.com",
-                "iletisim@yenisafak.com.tr",
-                "odtuteknokent.com.tr",
-                "trabzonteknokent.com.tr",
-                "milliyet.com.tr",
-                "adresin.com",
-                "otelpuan.com.tr",
-                "siteniz.com",
-                "joomla51.com",
-                "odamax.com",
-                "osb.org.tr",
-                "adresiniz.com",
-                "osb.com",
-              ];
-              const emailEndsWithInvalidExtension = invalidExtensions.some(
-                (ext) => email.endsWith(ext)
+          console.log(`Visit: ${siteURL}`);
+          await page
+            .goto(siteURL, { waitUntil: "domcontentloaded", timeout: 15000 })
+            .catch(() => {});
+          await randomDelay(1000, 1500);
+          let found = await extractAndAddEmails(page, emailsSet, worksheet);
+          if (found === 0) {
+            const contactLink = await page.evaluate(() => {
+              const links = Array.from(document.querySelectorAll("a"));
+              const contactRegex = /iletişim|contact|bize ulaşın/i;
+              const link = links.find(
+                (a) =>
+                  contactRegex.test(a.innerText) || contactRegex.test(a.href),
               );
-              if (!emailEndsWithInvalidExtension) {
-                if (!findDuplicatedEmails(emailsSet, email)) {
-                  emailsSet.add(email);
-                  const emailFilePath = path.join(
-                    __dirname,
-                    `${sanitizedKeyword}.txt`
-                  );
-                  fs.appendFileSync(emailFilePath, email + "\n");
+              return link ? link.href : null;
+            });
 
-                  worksheet.addRow({ email: email });
-                  rowCount++;
-
-                  if (rowCount >= 300) {
-                    await workbook.xlsx.writeFile(
-                      path.join(
-                        __dirname,
-                        `${sanitizedKeyword}_emails_${excelFileCount}.xlsx`
-                      )
-                    );
-                    excelFileCount++;
-                    workbook = new ExcelJS.Workbook();
-                    worksheet = workbook.addWorksheet("Emails");
-                    worksheet.columns = [
-                      { header: "Email", key: "email", width: 50 },
-                    ];
-                    rowCount = 0;
-                  }
-                }
-              }
+            if (contactLink) {
+              console.log(`   -> Contact: ${contactLink}`);
+              await page
+                .goto(contactLink, {
+                  waitUntil: "domcontentloaded",
+                  timeout: 15000,
+                })
+                .catch(() => {});
+              await randomDelay(1000, 1500);
+              found += await extractAndAddEmails(page, emailsSet, worksheet);
             }
-          });
+          }
+
+          if (found > 0) {
+            await workbook.xlsx.writeFile(excelFilePath);
+            console.log(` ${found}.${excelFileName}`);
+          }
         } catch (error) {
-          console.error(`Error accessing the site: ${siteURL}`, error);
           continue;
         }
       }
       currentPage++;
+      if (currentPage > 5) noMoreResults = true;
     }
 
-    if (rowCount > 0) {
-      await workbook.xlsx.writeFile(
-        path.join(
-          __dirname,
-          `${sanitizedKeyword}_emails_${excelFileCount}.xlsx`
-        )
-      );
-    }
-
-    const emails = [...emailsSet];
-    return { emails, visitedSites };
+    return { emails: [...emailsSet] };
   } catch (error) {
     throw error;
   } finally {
@@ -320,41 +367,21 @@ async function scrapeEmailsForMultipleKeywords() {
 
   for (const keyword of keywords) {
     if (searchedKeywords.includes(keyword)) {
-      console.log(
-        `The keyword "${keyword}" has already been searched. Skipping...`
-      );
+      console.log(`"${keyword}" atlanıyor.`);
       continue;
     }
     try {
+      console.log(`\n=== "${keyword}" BAŞLIYOR ===\n`);
+      const { emails } = await scrapeEmailsFromGoogle(keyword);
       console.log(
-        `Searching for email addresses for the keyword "${keyword}"...`
+        `\n=== BİTTİ: "${keyword}" için toplam ${emails.length} email bulundu ===\n`,
       );
-      const { emails, visitedSites } = await scrapeEmailsFromGoogle(keyword);
-      console.log(
-        `Email addresses for the keyword "${keyword}" have been successfully retrieved.`
-      );
-
-      if (visitedSites.length === 0) {
-        console.log(visitedSites, "empty");
-        console.log(
-          `No results found for "${keyword}". Moving on to the next keyword.`
-        );
-        continue;
-      }
 
       saveKeyword(keyword, searchedKeywordsFilePath);
+      await randomDelay(3000, 5000);
     } catch (error) {
-      console.error(`An error occurred for the keyword "${keyword}":`, error);
+      console.error(`Hata:`, error);
     }
   }
 }
-
-scrapeEmailsForMultipleKeywords()
-  .then(() => {
-    console.log(
-      "Email addresses for all keywords have been successfully retrieved."
-    );
-  })
-  .catch((error) => {
-    console.error("Error:", error);
-  });
+scrapeEmailsForMultipleKeywords();

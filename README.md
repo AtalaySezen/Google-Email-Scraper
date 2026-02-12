@@ -1,34 +1,32 @@
-# Google Email Scraper
+# Google Email Scraper v2.0
 
-Bu proje keywords.txt dosyası üzerinden vermiş olduğunuz anahtar kelimeleri sıralı bir şekilde Google arama sonuçlarını tarayarak e-posta adreslerini bulan bir uygulamadır. 
-<br/>
-<br/>
-Kullanıcıların belirledikleri anahtar kelimeye göre Google üzerinde arama yapmasını sağlar ve bulunan her e-posta adresini otomatik olarak bir metin dosyasına kaydeder.
-Ayrıca, taranan web sitelerinin URL'lerini ve toplamda kaç e-posta adresi bulunduğunu raporlar.
+![Version](https://img.shields.io/badge/version-2.0.0-blue.svg?style=flat-square)
+![Node](https://img.shields.io/badge/node-%3E%3D14.0-brightgreen.svg?style=flat-square)
+![Puppeteer](https://img.shields.io/badge/Puppeteer-Extra-orange?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)
 
-Ve daha önce aramış olduğunuz anahtar kelimeleri searched_keywords.txt isimli bir dosyada tutar bu sayede tekrardan aynı anahtar kelimeleri aramazsınız.
+> **Advanced, stealthy, and automated.** > *Gelişmiş, gizli ve tam otomatik.*
 
-**Kullanımı**
-<br />
-1. Keywords.txt dosyasına aramak istediğiniz anahtar kelimeleri girin ve node.js uygulamasını çalıştırın.
-2. EmailFinder web sayfalarını tarayacaktır.
-3. Bulunan e-posta adreslerini size txt dosyası halinde verecektir.
-   
---------------------------
+This is the **v2.0** major update of the Google Email Scraper. It allows you to scrape email addresses from Google search results based on your keywords, automatically saving them into organized Excel files.
 
-This project is an application that searches for email addresses by crawling Google search results based on the keywords provided in a keywords.txt file. 
-<br/>
-<br/>
-It allows users to perform searches on Google using specified keywords and automatically saves each found email address to a text file. Additionally, it reports the URLs of the crawled websites and the total number of email addresses found.
-Previously searched keywords are stored in a file named searched_keywords.txt, so you won’t search for the same keywords again.
+*Bu proje, Google Email Scraper'ın **v2.0** güncellemesidir. Anahtar kelimelerinize göre Google arama sonuçlarını tarayarak e-posta adreslerini bulur ve bunları düzenli Excel dosyalarına kaydeder.*
 
-Usage
-<br />
-1. Enter the keywords you want to search in the keywords.txt file and run the Node.js application.
-2. EmailFinder will crawl web pages.
-3. It will provide you with a .txt file containing the found email addresses.
-   
+---
 
+## New Features in v2.0 (Yenilikler)
 
+- **Stealth Mode:** Uses `puppeteer-extra-plugin-stealth` to bypass Google bot detection and CAPTCHAs. (*Google bot korumasını aşmak için gizlilik modunu kullanır.*)
+- **Session Persistence:** Creates a `chrome_profile` folder to save your Google session and cookies. You don't need to log in every time! (*Oturumunuzu kaydeder, her seferinde giriş yapmanız gerekmez.*)
+- **Excel Export:** No more messy text files! Results are saved as clean `.xlsx` files. (*Sonuçlar artık karmaşık txt dosyaları yerine Excel olarak kaydedilir.*)
+- **Smart Search:** Automatically detects and visits "Contact" pages if no email is found on the homepage. (*Ana sayfada mail yoksa İletişim sayfalarını bulup tarar.*)
+- **Human-Like Behavior:** Mimics real user interactions (mouse moves, random delays) to avoid getting blocked. (*Robot gibi davranmaz, gerçek kullanıcıyı taklit eder.*)
+- **⏯Resume Capability:** Remembers searched keywords in `searched_keywords.txt` so you can stop and resume anytime. (*Kaldığı yeri hatırlar, aynı kelimeleri tekrar aramaz.*)
 
+---
 
+## 🛠️ Installation (Kurulum)
+
+1. **Clone the repository (Projeyi indirin):**
+   ```bash
+   git clone [https://github.com/YOUR_USERNAME/google-email-scraper.git](https://github.com/YOUR_USERNAME/google-email-scraper.git)
+   cd google-email-scraper
