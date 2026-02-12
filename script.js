@@ -1,9 +1,13 @@
 const puppeteer = require("puppeteer-extra");
 const StealthPlugin = require("puppeteer-extra-plugin-stealth");
 puppeteer.use(StealthPlugin());
+const Table = require("cli-table3");
+const ExcelJS = require("exceljs");
+const figlet = require("figlet");
+const chalk = require("chalk");
 const fs = require("fs");
 const path = require("path");
-const ExcelJS = require("exceljs");
+const ora = require("ora");
 const keywordsFilePath = "keywords.txt";
 const searchedKeywordsFilePath = "searched_keywords.txt";
 
@@ -11,6 +15,34 @@ const randomDelay = (min, max) =>
   new Promise((resolve) =>
     setTimeout(resolve, Math.floor(Math.random() * (max - min + 1) + min)),
   );
+
+function showHeader() {
+  console.clear();
+  console.log(
+    chalk.green(
+      figlet.textSync("Google Email Scraper V2", {
+        horizontalLayout: "full",
+      }),
+    ),
+  );
+  console.log(
+    chalk.yellow(
+      "                                     Created by Atalay Sezen",
+    ),
+  );
+  console.log(
+    chalk.red(
+      "  42 65 74 74 65 72 20 57 65 62 3F 20 57 6F 72 6B 69 6E 67 20 6F 6E 20 69 74 2E\n",
+    ),
+  );
+  console.log(chalk.green("  ----Albis\n"));
+  console.log(
+    chalk.yellow("  Auto Google Scraper | Stealth Mode | Excel Export\n"),
+  );
+  console.log(
+    chalk.cyan("  --------------------------------------------------\n"),
+  );
+}
 
 async function isBlocked(page) {
   const url = page.url();
@@ -58,7 +90,7 @@ function sanitizeFilename(name) {
   return cleanName.toLowerCase();
 }
 
-async function extractAndAddEmails(page, emailsSet, worksheet) {
+async function extractAndAddEmails(page, emailsSet, worksheet, spinner) {
   const content = await page.content();
   const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
   const pageEmails = content.match(emailRegex) || [];
@@ -76,140 +108,31 @@ async function extractAndAddEmails(page, emailsSet, worksheet) {
         ".jpg",
         "donanimhaber.com",
         ".svg",
-        "etkialani.com",
-        ".webp",
         ".gov.tr",
         "@example.com",
         "yandex-team.ru",
-        "harita@destek.yandex.com.tr",
-        "firmakuruyorum.com",
-        "ikas.com",
-        "email.com",
-        "kuveytturk.com.tr",
-        "memurlar.net",
-        "sit.amet",
-        "indeed.com",
-        "schafer.com.tr",
-        "domain...vb",
-        "teknosa.com",
-        "evkur.com.tr",
-        "vestel.com.tr",
-        "adres.net",
-        "sabah.com.tr",
-        "adres.com",
-        "dha.com.tr",
-        "deneme.com",
-        "dha.com",
-        "jpg.jpeg",
-        "hurriyet.com.tr",
-        "hurriyet.com",
-        "ornek.com",
-        "tatil.com",
-        "evidea.com",
-        "@getir.com",
-        "domain.com",
-        "eczacibasi.com.tr",
-        "@hotmail.com",
-        "ntv.com.tr",
-        "jollytur.com",
-        "info@iyilikkazansin.com",
-        "test@web.com",
-        "srvpanel.com",
-        "wixpress.com",
-        "getsentry.com",
-        "test.com",
-        "website.com",
-        "kelebek.com",
-        "site.com",
-        "info@trendyol.com",
-        "trendyol",
-        "sentry.io",
-        "musiad.org.tr",
-        "musiad.at",
-        "muesiad.dk",
-        "visable.com",
-        "roztocil.name",
-        "bel.tr",
-        ".kep.tr",
-        "vip.163.com",
-        "@donanimhaber.com",
-        "mudo.com.tr",
-        "otelfiyat.com",
-        "dsdamat.com.tr",
-        "armut.com",
-        "homify.com",
-        "yemeksepeti.com",
-        "11.js",
-        "flo.com.tr",
-        "littlejoyturizm.com",
-        "tatildenince.com",
-        "tatilmaximum.com.tr",
-        "tatilzon.com",
-        "myratur.com",
-        "amazon.com",
-        "coex.cz",
-        "nbxfx.com",
-        ".edu.tr",
-        "tse.org.tr",
-        "eposta.com",
-        "kiptas.com.tr",
-        "verizon.net",
-        ".yandex.ru",
-        "addresshere.com",
-        "siteadresi.com",
-        "eleman.net",
-        "emlakjet.com",
-        "igairport.aero",
-        "biletdukkani.com",
-        "sochic.com",
-        "atasay.com",
-        "onedio.com",
-        "altinbas.com",
-        "steinfels-kg.de",
-        "oggusto.com",
-        "youremail.com",
-        "boschelektriklielaletleri.com",
-        "tatildukkani.com",
-        "trthaber.com",
-        "sokmarket.com.tr",
-        "broofa.com",
-        "opencart.com",
-        "turhost.com",
-        "wings.com.tr",
-        "vanleeuwen.nl",
-        "otelpuan.com",
-        "email.here",
-        "chp.org.tr",
-        "eve.com.tr",
-        "yenisafak.com",
-        "iletisim@yenisafak.com.tr",
-        "odtuteknokent.com.tr",
-        "trabzonteknokent.com.tr",
-        "milliyet.com.tr",
-        "adresin.com",
-        "otelpuan.com.tr",
-        "siteniz.com",
-        "joomla51.com",
-        "odamax.com",
-        "osb.org.tr",
-        "adresiniz.com",
-        "osb.com",
+        "google.com",
         "wix.com",
         "wordpress.com",
         "bootstrap",
         "react",
         "jquery",
-        "google.com",
+        "trendyol",
+        "hepsiburada",
+        "sahibinden",
       ];
-
       const emailEndsWithInvalidExtension = invalidExtensions.some(
         (ext) => email.endsWith(ext) || email.includes(ext),
       );
-
       if (!emailEndsWithInvalidExtension) {
         if (!findDuplicatedEmails(emailsSet, email)) {
           emailsSet.add(email);
-          console.log(`[EKLENDİ] ${email}`);
+          spinner.stopAndPersist({
+            symbol: chalk.green("✔"),
+            text: chalk.green(` ${email}`),
+          });
+          spinner.start();
+
           worksheet.addRow({ email: email });
           foundCount++;
         }
@@ -219,7 +142,7 @@ async function extractAndAddEmails(page, emailsSet, worksheet) {
   return foundCount;
 }
 
-async function scrapeEmailsFromGoogle(keyword) {
+async function scrapeEmailsFromGoogle(keyword, mainSpinner) {
   const browser = await puppeteer.launch({
     headless: false,
     userDataDir: "./chrome_profile",
@@ -227,44 +150,43 @@ async function scrapeEmailsFromGoogle(keyword) {
       "--no-sandbox",
       "--disable-setuid-sandbox",
       "--disable-blink-features=AutomationControlled",
-      "--window-size=1920,1080",
+      "--window-size=1200,800",
     ],
     defaultViewport: null,
     ignoreHTTPSErrors: true,
   });
 
   const page = await browser.newPage();
-  await page.setUserAgent(
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-  );
+  mainSpinner.text = `${chalk.bold(keyword)}: Tarayıcı başlatılıyor...`;
   let workbook = new ExcelJS.Workbook();
   let worksheet = workbook.addWorksheet("Emails");
   worksheet.columns = [{ header: "Email", key: "email", width: 50 }];
   const sanitizedKeyword = sanitizeFilename(keyword);
   const excelFileName = `${sanitizedKeyword}.xlsx`;
   const excelFilePath = path.join(__dirname, excelFileName);
-
   try {
     let emailsSet = new Set();
-    let visitedSites = [];
     let currentPage = 1;
     let noMoreResults = false;
+    let totalEmailsFound = 0;
 
     while (!noMoreResults) {
-      console.log(`--- Sayfa ${currentPage} Taranıyor ---`);
-
+      mainSpinner.text = `${chalk.bold(keyword)}: Google Sayfa ${currentPage} taranıyor...`;
       await page.goto(
         `https://www.google.com/search?q=${keyword}&start=${(currentPage - 1) * 10}`,
         { waitUntil: "domcontentloaded" },
       );
 
       if (await isBlocked(page)) {
-        console.log("!!! CAPTCHA BEKLENİYOR (60sn) !!!");
+        mainSpinner.warn(
+          chalk.red("CAPTCHA Algılandı! Lütfen 60sn içinde çözün..."),
+        );
         await randomDelay(60000, 60000);
         if (await isBlocked(page)) {
-          console.log("Blok devam ediyor, çıkılıyor.");
+          mainSpinner.fail(chalk.red("Blok aşılamadı, bu kelime atlanıyor."));
           break;
         }
+        mainSpinner.start("CAPTCHA çözüldü, devam ediliyor...");
       }
 
       await randomDelay(2000, 3000);
@@ -275,48 +197,45 @@ async function scrapeEmailsFromGoogle(keyword) {
           .map((a) => a.href)
           .filter(
             (href) =>
-              href &&
-              href.startsWith("http") &&
-              !href.includes("google.com") &&
-              !href.includes("googleusercontent"),
+              href && href.startsWith("http") && !href.includes("google.com"),
           );
       });
 
       const uniqueURLs = [...new Set(siteURLs)];
-      console.log(`Link Count: ${uniqueURLs.length}`);
+
       if (uniqueURLs.length === 0) {
         const nextButton = await page.$("#pnnext");
         if (!nextButton) {
-          console.log("Done");
           noMoreResults = true;
         }
       }
-      visitedSites.push(...uniqueURLs);
+
       for (const siteURL of uniqueURLs) {
         const restrictedSites = [
           "trendyol.com",
           "hepsiburada.com",
           "n11.com",
-          "amazon.com",
-          "sahibinden.com",
           "facebook.com",
-          "twitter.com",
           "instagram.com",
           "linkedin.com",
           "youtube.com",
-          "pinterest.com",
-          "wikipedia.org",
-          "tripadvisor.com",
-          "sikayetvar.com",
         ];
         if (restrictedSites.some((site) => siteURL.includes(site))) continue;
+
         try {
-          console.log(`Visit: ${siteURL}`);
+          mainSpinner.text = `${chalk.blue("Ziyaret Ediliyor:")} ${siteURL.substring(0, 50)}...`;
+
           await page
-            .goto(siteURL, { waitUntil: "domcontentloaded", timeout: 15000 })
+            .goto(siteURL, { waitUntil: "domcontentloaded", timeout: 12000 })
             .catch(() => {});
-          await randomDelay(1000, 1500);
-          let found = await extractAndAddEmails(page, emailsSet, worksheet);
+          await randomDelay(500, 1000);
+
+          let found = await extractAndAddEmails(
+            page,
+            emailsSet,
+            worksheet,
+            mainSpinner,
+          );
           if (found === 0) {
             const contactLink = await page.evaluate(() => {
               const links = Array.from(document.querySelectorAll("a"));
@@ -329,21 +248,26 @@ async function scrapeEmailsFromGoogle(keyword) {
             });
 
             if (contactLink) {
-              console.log(`   -> Contact: ${contactLink}`);
+              mainSpinner.text = `${chalk.magenta("İletişim Sayfası:")} ${contactLink.substring(0, 50)}...`;
               await page
                 .goto(contactLink, {
                   waitUntil: "domcontentloaded",
-                  timeout: 15000,
+                  timeout: 12000,
                 })
                 .catch(() => {});
-              await randomDelay(1000, 1500);
-              found += await extractAndAddEmails(page, emailsSet, worksheet);
+              await randomDelay(500, 1000);
+              found += await extractAndAddEmails(
+                page,
+                emailsSet,
+                worksheet,
+                mainSpinner,
+              );
             }
           }
 
           if (found > 0) {
+            totalEmailsFound += found;
             await workbook.xlsx.writeFile(excelFilePath);
-            console.log(` ${found}.${excelFileName}`);
           }
         } catch (error) {
           continue;
@@ -352,8 +276,7 @@ async function scrapeEmailsFromGoogle(keyword) {
       currentPage++;
       if (currentPage > 5) noMoreResults = true;
     }
-
-    return { emails: [...emailsSet] };
+    return { count: totalEmailsFound };
   } catch (error) {
     throw error;
   } finally {
@@ -362,26 +285,47 @@ async function scrapeEmailsFromGoogle(keyword) {
 }
 
 async function scrapeEmailsForMultipleKeywords() {
+  showHeader();
   const keywords = readKeywords(keywordsFilePath);
   const searchedKeywords = readKeywords(searchedKeywordsFilePath);
-
+  const summaryTable = new Table({
+    head: [
+      chalk.cyan("Anahtar Kelime"),
+      chalk.cyan("Email"),
+      chalk.cyan("Durum"),
+    ],
+    colWidths: [40, 10, 20],
+  });
   for (const keyword of keywords) {
     if (searchedKeywords.includes(keyword)) {
-      console.log(`"${keyword}" atlanıyor.`);
+      console.log(chalk.gray(`Skipping: ${keyword} (Zaten taranmış)`));
       continue;
     }
+    const spinner = ora(`${chalk.bold(keyword)} başlatılıyor...`).start();
     try {
-      console.log(`\n=== "${keyword}" BAŞLIYOR ===\n`);
-      const { emails } = await scrapeEmailsFromGoogle(keyword);
-      console.log(
-        `\n=== BİTTİ: "${keyword}" için toplam ${emails.length} email bulundu ===\n`,
-      );
+      const { count } = await scrapeEmailsFromGoogle(keyword, spinner);
+      spinner.succeed(chalk.green(`Tamamlandı: ${keyword}`));
+      console.log(chalk.bgGreen.black(` TOPLAM SONUÇ: ${count} email `) + "\n");
+      summaryTable.push([
+        keyword,
+        chalk.green(count),
+        chalk.green("Tamamlandı"),
+      ]);
 
       saveKeyword(keyword, searchedKeywordsFilePath);
+      spinner.start(chalk.yellow("Google ban yememek için bekleniyor..."));
       await randomDelay(3000, 5000);
+      spinner.stop();
     } catch (error) {
-      console.error(`Hata:`, error);
+      spinner.fail(chalk.red(`Hata oluştu: ${keyword}`));
+      console.error(error);
+      summaryTable.push([keyword, chalk.red("0"), chalk.red("Hata")]);
     }
   }
+  console.log("\n" + chalk.bold.yellow("📊 İŞLEM ÖZETİ:"));
+  console.log(summaryTable.toString());
+  console.log(chalk.blue.bold("\n--- TÜM İŞLEMLER BİTTİ ---"));
+  process.stdout.write("\x07");
 }
+
 scrapeEmailsForMultipleKeywords();
